@@ -1,0 +1,17 @@
+{
+  "classifier": "Random Forest",
+  "threshold": 0.496312198223627,
+  "features": [
+    "avg_balance_inr",
+    "previous_month_balance_inr",
+    "monthly_credits_inr",
+    "monthly_debits_inr",
+    "transaction_count_30d",
+    "digital_sessions_30d",
+    "days_since_last_transaction",
+    "complaint_count_90d",
+    "tenure_months",
+    "account_type",
+    "branch_code"
+  ]
+}

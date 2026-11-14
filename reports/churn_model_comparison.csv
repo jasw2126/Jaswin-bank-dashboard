@@ -1,0 +1,4 @@
+model,PR-AUC,ROC-AUC,precision,recall,scoring seconds
+Random Forest,0.8385,0.9598,0.7601,0.6862,0.2674
+Logistic Regression,0.8257,0.9585,0.7687,0.6939,0.0204
+KNN,0.7582,0.9311,0.7313,0.6603,1.8659

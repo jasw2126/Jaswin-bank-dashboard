@@ -1,0 +1,3 @@
+model,MAE (INR),RMSE (INR),R2
+Baseline (last month balance),9518.92,15292.42,0.98
+Linear Regression,6300.51,10075.1,0.99

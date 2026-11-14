@@ -1,0 +1,10 @@
+{
+  "classifier": "Random Forest",
+  "threshold": 0.496312198223627,
+  "test_rows": 5520,
+  "test_pr_auc": 0.909372198039953,
+  "test_roc_auc": 0.9720943011417604,
+  "test_precision": 0.8563829787234043,
+  "test_recall": 0.7834549878345499,
+  "test_f1": 0.818297331639136
+}
