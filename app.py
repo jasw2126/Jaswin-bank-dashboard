@@ -2,6 +2,8 @@
 import io
 import json
 import sqlite3
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -14,21 +16,28 @@ from streamlit_autorefresh import st_autorefresh
 BASE = Path(__file__).resolve().parent
 DATA, MODELS, REPORTS = BASE / "data", BASE / "models", BASE / "reports"
 DB_FILE = DATA / "review_queue.db"
-TEAL, EMERALD, PLATINUM, NAVY = "#2DD4BF", "#10B981", "#E5E7EB", "#0B1B2B"
+GOLD, LIGHT_GOLD, CHAMPAGNE, BLACK = "#D4AF37", "#F5D77A", "#F5EFD9", "#0A0A0A"
+GOLD_SCALE = ["#1A1608", GOLD, LIGHT_GOLD]
+px.defaults.template = "plotly_dark"                      # every chart starts gold-on-black
+px.defaults.color_discrete_sequence = [GOLD, LIGHT_GOLD, "#B8860B", "#8C7A3C"]
+px.defaults.color_continuous_scale = GOLD_SCALE
 PAGES = ["Portfolio Overview", "Customer View", "Model Comparison", "Review Queue"]
 STATUSES = ["Open", "In review", "Contacted", "Closed"]
 
 st.set_page_config(page_title="JASWIN BANK", page_icon="🏦", layout="wide")
 st.markdown(f"""<style>
-.stApp {{background: linear-gradient(160deg, {NAVY} 0%, #0F2A3D 100%); color: {PLATINUM};}}
-[data-testid="stSidebar"] {{background: #08141F; border-right: 1px solid #14343F;}}
+.stApp {{background: radial-gradient(circle at 15% 0%, #1C1608 0%, {BLACK} 55%); color: {CHAMPAGNE};}}
+[data-testid="stHeader"] {{background: transparent;}}
+[data-testid="stSidebar"] {{background: #050505; border-right: 1px solid #3A2F10;}}
 [data-testid="stSidebar"] button {{background: transparent; border: none; box-shadow: none;
-    justify-content: flex-start; color: #94A3B8; font-size: 1.05rem;}}
-[data-testid="stSidebar"] button:hover {{color: {TEAL};}}
+    justify-content: flex-start; color: #A8A08A; font-size: 1.05rem;}}
+[data-testid="stSidebar"] button:hover {{color: {LIGHT_GOLD};}}
 [data-testid="stSidebar"] button[kind="primary"],
-[data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] {{color: {EMERALD}; font-weight: 700;}}
-[data-testid="stMetric"] {{background: #0F2433; border: 1px solid #14343F; border-radius: 12px; padding: 14px;}}
-h1, h2, h3 {{color: {PLATINUM};}}
+[data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] {{color: {GOLD}; font-weight: 700;
+    border-left: 3px solid {GOLD}; border-radius: 0;}}
+[data-testid="stMetric"] {{background: #14110A; border: 1px solid #3A2F10; border-radius: 12px; padding: 14px;}}
+[data-testid="stMetricValue"] {{color: {LIGHT_GOLD};}}
+h1, h2, h3 {{color: {GOLD};}}
 </style>""", unsafe_allow_html=True)
 
 
@@ -48,18 +57,29 @@ def load_csv(path, **kwargs):
     return pd.read_csv(io.StringIO("\n".join(lines)), **kwargs)
 
 
+def _load_models():
+    return joblib.load(need(MODELS / "balance_model.joblib")), joblib.load(need(MODELS / "churn_model.joblib"))
+
+
+@st.cache_resource(show_spinner="Preparing models for this server (first start only, about a minute)...")
+def load_models():
+    """Saved models only load on the same scikit-learn version that trained them.
+    If loading fails, retrain on this machine with train_models.py, then load again."""
+    try:
+        return _load_models()
+    except Exception:
+        subprocess.run([sys.executable, "train_models.py"], cwd=BASE, check=True, capture_output=True)
+        return _load_models()
+
+
+balance_model, churn_model = load_models()
+
 settings = json.load(open(need(MODELS / "churn_settings.json")))
 FEATURES, THRESHOLD = settings["features"], settings["threshold"]
 NUM = [f for f in FEATURES if f not in ("account_type", "branch_code")]
 COLS = ["customer_id", "snapshot_date"] + FEATURES
 
 
-@st.cache_resource
-def load_models():
-    return joblib.load(need(MODELS / "balance_model.joblib")), joblib.load(need(MODELS / "churn_model.joblib"))
-
-
-balance_model, churn_model = load_models()
 MODEL_VERSION = f"{settings['classifier']} | {datetime.fromtimestamp((MODELS / 'churn_model.joblib').stat().st_mtime):%Y-%m-%d}"
 
 
@@ -126,11 +146,17 @@ if log_rows:
 
 def style(fig):
     fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                      margin=dict(l=10, r=10, t=40, b=10), colorway=[TEAL, EMERALD, "#94A3B8"])
+                      margin=dict(l=10, r=10, t=40, b=10), colorway=[GOLD, LIGHT_GOLD, "#B8860B"], font_color=CHAMPAGNE)
     return fig
 
 
 # ---------- 3. Sidebar navigation (clickable titles) ----------
+@st.cache_resource
+def feed_state():
+    return {"proc": None}          # remembers the feed process between reruns
+
+
+FEED = feed_state()
 st.session_state.setdefault("page", PAGES[0])
 with st.sidebar:
     st.markdown("## 🏦 JASWIN BANK")
@@ -140,6 +166,15 @@ with st.sidebar:
             st.session_state.page = p
             st.rerun()
     st.divider()
+    running = FEED["proc"] is not None and FEED["proc"].poll() is None
+    if st.button("⏹ Stop live feed" if running else "▶ Start live feed", key="feed_btn", width="stretch"):
+        if running:
+            FEED["proc"].terminate()
+        else:
+            FEED["proc"] = subprocess.Popen([sys.executable, str(BASE / "simulate_feed.py")], cwd=BASE,
+                                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        st.rerun()
+    st.caption("Feed is running: new record every 30 s" if running else "Feed is stopped")
     live_on = st.toggle("Live refresh (every 10 s)", value=True)
     max_queue = st.slider("Review queue size", 10, 200, 50, 10)
     st.caption(f"Model: {MODEL_VERSION}\n\nThreshold: {THRESHOLD:.3f}\n\nFictional data only.")
@@ -202,7 +237,7 @@ def page_customer():
     hist = all_rows[all_rows.customer_id == customer_id]
     fig = px.line(hist, x="snapshot_date", y="avg_balance_inr", markers=True, title=f"{customer_id} balance history and forecast")
     fig.add_scatter(x=[row.snapshot_date + pd.offsets.MonthEnd(1)], y=[row.balance_forecast_inr],
-                    mode="markers", name="Forecast", marker=dict(size=14, color=EMERALD, symbol="diamond"))
+                    mode="markers", name="Forecast", marker=dict(size=14, color=LIGHT_GOLD, symbol="diamond"))
     st.plotly_chart(style(fig), width="stretch")
     st.subheader("Current features")
     st.dataframe(row[FEATURES].astype(str).to_frame("value"), width="stretch")
@@ -231,7 +266,7 @@ def page_models():
     b.plotly_chart(style(px.bar(comp, x="model", y="PR-AUC", title="Validation PR-AUC")), width="stretch")
 
     cm = pd.read_csv(files["test_confusion_matrix.csv"], index_col=0)
-    a.plotly_chart(style(px.imshow(cm, text_auto=True, color_continuous_scale="Teal", title="Test confusion matrix")),
+    a.plotly_chart(style(px.imshow(cm, text_auto=True, color_continuous_scale=GOLD_SCALE, title="Test confusion matrix")),
                    width="stretch")
     pred = pd.read_csv(files["balance_test_predictions.csv"]).sample(3000, random_state=42)
     b.plotly_chart(style(px.scatter(pred, x="predicted_balance_inr", y="residual_inr", opacity=0.4,
