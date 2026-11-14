@@ -26,6 +26,18 @@ STATUSES = ["Open", "In review", "Contacted", "Closed"]
 
 st.set_page_config(page_title="JASWIN BANK", page_icon="🏦", layout="wide")
 st.markdown(f"""<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Poppins:wght@300;400;500;600&display=swap');
+html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], p, label, button, input, textarea,
+[data-testid="stMetricLabel"], [data-testid="stCaptionContainer"] {{font-family: 'Poppins', sans-serif;}}
+h1, h2, h3, [data-testid="stMetricValue"] {{font-family: 'Playfair Display', serif !important; letter-spacing: 0.02em;}}
+[data-testid="stElementContainer"]:has(iframe[title*="autorefresh"]),
+.element-container:has(iframe[title*="autorefresh"]) {{height: 0; margin: 0; padding: 0; overflow: hidden; opacity: 0;}}
+.brand {{border-bottom: 1px solid #3A2F10; padding-bottom: 0.8rem; margin-bottom: 1.4rem;}}
+.brand-name {{font-family: 'Playfair Display', serif; font-size: 3.2rem; font-weight: 700; letter-spacing: 0.22em;
+    background: linear-gradient(90deg, #B8860B, #F5D77A, #D4AF37); -webkit-background-clip: text;
+    background-clip: text; color: transparent; line-height: 1.1;}}
+.brand-tag {{font-size: 0.75rem; letter-spacing: 0.32em; color: #A8A08A; margin-top: 0.4rem;}}
+.side-brand {{font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.16em; color: #D4AF37;}}
 .stApp {{background: radial-gradient(circle at 15% 0%, #1C1608 0%, {BLACK} 55%); color: {CHAMPAGNE};}}
 [data-testid="stHeader"] {{background: transparent;}}
 [data-testid="stSidebar"] {{background: #050505; border-right: 1px solid #3A2F10;}}
@@ -141,12 +153,12 @@ log_rows = [(r.request_id, r.customer_id, r.scored_at, r.model_version, float(r.
 log_rows += [(r.request_id, r.customer_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), MODEL_VERSION,
               None, None, "rejected: invalid or negative values") for r in live_bad.itertuples()]
 if log_rows:
-    run_sql("INSERT OR IGNORE INTO prediction_log VALUES (?,?,?,?,?,?,?)", log_rows, many=True)
+    _ = run_sql("INSERT OR IGNORE INTO prediction_log VALUES (?,?,?,?,?,?,?)", log_rows, many=True)
 
 
 def style(fig):
     fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                      margin=dict(l=10, r=10, t=40, b=10), colorway=[GOLD, LIGHT_GOLD, "#B8860B"], font_color=CHAMPAGNE)
+                      margin=dict(l=10, r=10, t=40, b=10), colorway=[GOLD, LIGHT_GOLD, "#B8860B"], font=dict(family="Poppins, sans-serif", color=CHAMPAGNE))
     return fig
 
 
@@ -159,7 +171,7 @@ def feed_state():
 FEED = feed_state()
 st.session_state.setdefault("page", PAGES[0])
 with st.sidebar:
-    st.markdown("## 🏦 JASWIN BANK")
+    st.markdown('<div class="side-brand">🏦 JASWIN BANK</div>', unsafe_allow_html=True)
     for p in PAGES:
         if st.button(p, key=f"nav_{p}", width="stretch",
                      type="primary" if st.session_state.page == p else "secondary"):
@@ -179,10 +191,16 @@ with st.sidebar:
     max_queue = st.slider("Review queue size", 10, 200, 50, 10)
     st.caption(f"Model: {MODEL_VERSION}\n\nThreshold: {THRESHOLD:.3f}\n\nFictional data only.")
 if live_on:
-    st_autorefresh(interval=10_000, key="auto_refresh")
+    _ = st_autorefresh(interval=10_000, key="auto_refresh")
 
 
 # ---------- 4. Pages ----------
+def brand_header():
+    st.markdown('<div class="brand"><div class="brand-name">JASWIN BANK</div>'
+                '<div class="brand-tag">CUSTOMER INTELLIGENCE &nbsp;·&nbsp; BALANCE FORECASTING &nbsp;·&nbsp; CHURN REVIEW</div></div>',
+                unsafe_allow_html=True)
+
+
 def page_overview():
     st.title("Portfolio Overview")
     fresh = live_ok["ingested_at"].max() if len(live_ok) else f"{history.snapshot_date.max():%Y-%m-%d} (history)"
@@ -315,5 +333,6 @@ def page_queue():
             st.warning(f"{len(live_bad)} malformed feed record(s) rejected.")
 
 
-{"Portfolio Overview": page_overview, "Customer View": page_customer,
+brand_header()
+_ = {"Portfolio Overview": page_overview, "Customer View": page_customer,
  "Model Comparison": page_models, "Review Queue": page_queue}[st.session_state.page]()
