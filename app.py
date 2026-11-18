@@ -16,40 +16,86 @@ from streamlit_autorefresh import st_autorefresh
 BASE = Path(__file__).resolve().parent
 DATA, MODELS, REPORTS = BASE / "data", BASE / "models", BASE / "reports"
 DB_FILE = DATA / "review_queue.db"
-GOLD, LIGHT_GOLD, CHAMPAGNE, BLACK = "#D4AF37", "#F5D77A", "#F5EFD9", "#0A0A0A"
-GOLD_SCALE = ["#1A1608", GOLD, LIGHT_GOLD]
-px.defaults.template = "plotly_dark"                      # every chart starts gold-on-black
-px.defaults.color_discrete_sequence = [GOLD, LIGHT_GOLD, "#B8860B", "#8C7A3C"]
+
+# ---------- Theme: colours taken from the named-colour chart (goldenrod family on black) ----------
+BLACK      = "#0A0A0A"
+GOLD       = "#D4AF37"   # metallic gold, main accent
+GOLDENROD  = "#DAA520"   # goldenrod
+DARKGOLD   = "#B8860B"   # darkgoldenrod
+LIGHT_GOLD = "#F5D77A"
+BURLYWOOD  = "#DEB887"   # burlywood
+CHAMPAGNE  = "#FFF8DC"   # cornsilk, body text
+MUTED      = "#A8A08A"
+PANEL      = "#14110A"
+EDGE       = "#3A2F10"
+GOLD_SCALE = ["#1A1608", DARKGOLD, GOLD, LIGHT_GOLD]
+SERIES     = [GOLD, BURLYWOOD, DARKGOLD, LIGHT_GOLD, "#8C7A3C"]
+
+# ---------- Fonts: picked from the specimen sheet ----------
+# Poiret One  -> "Deco" style wordmark      | Cormorant Garamond -> "Holmes / Rouge" style headings
+# Manrope     -> clean, readable body text  | all free on Google Fonts
+FONT_BRAND, FONT_HEAD, FONT_BODY = "Poiret One", "Cormorant Garamond", "Manrope"
+
+px.defaults.template = "plotly_dark"
+px.defaults.color_discrete_sequence = SERIES
 px.defaults.color_continuous_scale = GOLD_SCALE
 PAGES = ["Portfolio Overview", "Customer View", "Model Comparison", "Review Queue"]
 STATUSES = ["Open", "In review", "Contacted", "Closed"]
 
 st.set_page_config(page_title="JASWIN BANK", page_icon="🏦", layout="wide")
 st.markdown(f"""<style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Poppins:wght@300;400;500;600&display=swap');
-html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], p, label, button, input, textarea,
-[data-testid="stMetricLabel"], [data-testid="stCaptionContainer"] {{font-family: 'Poppins', sans-serif;}}
-h1, h2, h3, [data-testid="stMetricValue"] {{font-family: 'Playfair Display', serif !important; letter-spacing: 0.02em;}}
-[data-testid="stElementContainer"]:has(iframe[title*="autorefresh"]),
-.element-container:has(iframe[title*="autorefresh"]) {{height: 0; margin: 0; padding: 0; overflow: hidden; opacity: 0;}}
-.brand {{border-bottom: 1px solid #3A2F10; padding-bottom: 0.8rem; margin-bottom: 1.4rem;}}
-.brand-name {{font-family: 'Playfair Display', serif; font-size: 3.2rem; font-weight: 700; letter-spacing: 0.22em;
-    background: linear-gradient(90deg, #B8860B, #F5D77A, #D4AF37); -webkit-background-clip: text;
-    background-clip: text; color: transparent; line-height: 1.1;}}
-.brand-tag {{font-size: 0.75rem; letter-spacing: 0.32em; color: #A8A08A; margin-top: 0.4rem;}}
-.side-brand {{font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.16em; color: #D4AF37;}}
-.stApp {{background: radial-gradient(circle at 15% 0%, #1C1608 0%, {BLACK} 55%); color: {CHAMPAGNE};}}
+@import url('https://fonts.googleapis.com/css2?family=Poiret+One&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Manrope:wght@400;500;600;700&display=swap');
+
+html, body, .stApp, .stApp p, .stApp label, .stApp li, .stApp input, .stApp textarea,
+.stApp button, .stApp [data-baseweb], .stApp [data-testid="stCaptionContainer"] {{
+    font-family: '{FONT_BODY}', sans-serif;}}
+[data-testid="stIconMaterial"], .material-icons, .material-symbols-rounded {{
+    font-family: 'Material Symbols Rounded' !important;}}
+
+.stApp {{background: radial-gradient(circle at 12% 0%, #2A200B 0%, #120E05 38%, {BLACK} 70%);
+    color: {CHAMPAGNE}; line-height: 1.6;}}
 [data-testid="stHeader"] {{background: transparent;}}
-[data-testid="stSidebar"] {{background: #050505; border-right: 1px solid #3A2F10;}}
+.block-container {{padding-top: 2.2rem; max-width: 1400px;}}
+
+/* Headings: Cormorant Garamond, gold */
+h1, h2, h3, [data-testid="stHeading"] * {{font-family: '{FONT_HEAD}', serif !important; color: {GOLD};
+    letter-spacing: .01em; font-weight: 600;}}
+h1 {{font-size: 3rem !important; line-height: 1.1; padding-bottom: .6rem;
+    border-bottom: 1px solid {EDGE}; margin-bottom: 1.2rem;}}
+h2, h3 {{font-size: 1.7rem !important;}}
+
+/* Sidebar */
+[data-testid="stSidebar"] {{background: linear-gradient(180deg, #0D0A03 0%, #050505 100%);
+    border-right: 1px solid {EDGE};}}
+[data-testid="stSidebar"] h2 {{font-family: '{FONT_BRAND}', cursive !important; font-size: 2.1rem !important;
+    letter-spacing: .14em; color: {LIGHT_GOLD}; font-weight: 400; padding-bottom: .4rem;}}
 [data-testid="stSidebar"] button {{background: transparent; border: none; box-shadow: none;
-    justify-content: flex-start; color: #A8A08A; font-size: 1.05rem;}}
-[data-testid="stSidebar"] button:hover {{color: {LIGHT_GOLD};}}
+    justify-content: flex-start; color: {MUTED}; font-size: 1.02rem; font-weight: 500;
+    border-left: 3px solid transparent; border-radius: 0; transition: color .2s, border-color .2s;}}
+[data-testid="stSidebar"] button:hover {{color: {LIGHT_GOLD}; border-left-color: {DARKGOLD};}}
 [data-testid="stSidebar"] button[kind="primary"],
 [data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] {{color: {GOLD}; font-weight: 700;
-    border-left: 3px solid {GOLD}; border-radius: 0;}}
-[data-testid="stMetric"] {{background: #14110A; border: 1px solid #3A2F10; border-radius: 12px; padding: 14px;}}
-[data-testid="stMetricValue"] {{color: {LIGHT_GOLD};}}
-h1, h2, h3 {{color: {GOLD};}}
+    border-left: 3px solid {GOLD}; background: linear-gradient(90deg, rgba(212,175,55,.14), transparent);}}
+[data-testid="stSidebar"] hr {{border-color: {EDGE};}}
+
+/* Metric cards */
+[data-testid="stMetric"] {{background: linear-gradient(145deg, #1A1508 0%, {PANEL} 100%);
+    border: 1px solid {EDGE}; border-top: 2px solid {DARKGOLD}; border-radius: 10px; padding: 16px 18px;}}
+[data-testid="stMetricLabel"] * {{color: {MUTED}; font-weight: 500; font-size: .85rem;}}
+[data-testid="stMetricValue"] * {{font-family: '{FONT_HEAD}', serif !important; color: {LIGHT_GOLD};
+    font-weight: 700; font-size: 2.1rem; line-height: 1.15;}}
+
+/* Tables, inputs, expanders */
+[data-testid="stDataFrame"] {{border: 1px solid {EDGE}; border-radius: 10px; overflow: hidden;}}
+[data-baseweb="input"], [data-baseweb="select"] > div {{background: {PANEL}; border-color: {EDGE};}}
+[data-baseweb="input"]:focus-within, [data-baseweb="select"] > div:focus-within {{border-color: {GOLD};}}
+[data-testid="stForm"], [data-testid="stExpander"] {{background: {PANEL}; border: 1px solid {EDGE}; border-radius: 10px;}}
+.stButton > button, [data-testid="stFormSubmitButton"] > button {{border-color: {DARKGOLD}; color: {GOLD};}}
+[data-testid="stFormSubmitButton"] > button {{background: {GOLD}; color: {BLACK}; font-weight: 700; border: none;}}
+[data-testid="stFormSubmitButton"] > button:hover {{background: {LIGHT_GOLD}; color: {BLACK};}}
+[data-testid="stAlert"] {{border-radius: 10px;}}
+::selection {{background: {GOLD}; color: {BLACK};}}
+:focus-visible {{outline: 2px solid {LIGHT_GOLD}; outline-offset: 2px;}}
 </style>""", unsafe_allow_html=True)
 
 
@@ -153,12 +199,20 @@ log_rows = [(r.request_id, r.customer_id, r.scored_at, r.model_version, float(r.
 log_rows += [(r.request_id, r.customer_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), MODEL_VERSION,
               None, None, "rejected: invalid or negative values") for r in live_bad.itertuples()]
 if log_rows:
-    _ = run_sql("INSERT OR IGNORE INTO prediction_log VALUES (?,?,?,?,?,?,?)", log_rows, many=True)
+    run_sql("INSERT OR IGNORE INTO prediction_log VALUES (?,?,?,?,?,?,?)", log_rows, many=True)
 
 
 def style(fig):
-    fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                      margin=dict(l=10, r=10, t=40, b=10), colorway=[GOLD, LIGHT_GOLD, "#B8860B"], font=dict(family="Poppins, sans-serif", color=CHAMPAGNE))
+    """Gold-on-black chart look with the same fonts as the page."""
+    fig.update_layout(
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=10, r=10, t=56, b=10), colorway=SERIES,
+        font=dict(family=f"{FONT_BODY}, sans-serif", color=CHAMPAGNE, size=13),
+        title=dict(font=dict(family=f"{FONT_HEAD}, serif", size=24, color=GOLD)),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=MUTED)),
+        hoverlabel=dict(bgcolor=PANEL, bordercolor=GOLD, font=dict(family=f"{FONT_BODY}, sans-serif", color=CHAMPAGNE)))
+    fig.update_xaxes(gridcolor="#2A220E", linecolor=EDGE, zerolinecolor=EDGE, tickfont=dict(color=MUTED))
+    fig.update_yaxes(gridcolor="#2A220E", linecolor=EDGE, zerolinecolor=EDGE, tickfont=dict(color=MUTED))
     return fig
 
 
@@ -171,7 +225,7 @@ def feed_state():
 FEED = feed_state()
 st.session_state.setdefault("page", PAGES[0])
 with st.sidebar:
-    st.markdown('<div class="side-brand">🏦 JASWIN BANK</div>', unsafe_allow_html=True)
+    st.markdown("## JASWIN BANK")
     for p in PAGES:
         if st.button(p, key=f"nav_{p}", width="stretch",
                      type="primary" if st.session_state.page == p else "secondary"):
@@ -191,16 +245,10 @@ with st.sidebar:
     max_queue = st.slider("Review queue size", 10, 200, 50, 10)
     st.caption(f"Model: {MODEL_VERSION}\n\nThreshold: {THRESHOLD:.3f}\n\nFictional data only.")
 if live_on:
-    _ = st_autorefresh(interval=10_000, key="auto_refresh")
+    st_autorefresh(interval=10_000, key="auto_refresh")
 
 
 # ---------- 4. Pages ----------
-def brand_header():
-    st.markdown('<div class="brand"><div class="brand-name">JASWIN BANK</div>'
-                '<div class="brand-tag">CUSTOMER INTELLIGENCE &nbsp;·&nbsp; BALANCE FORECASTING &nbsp;·&nbsp; CHURN REVIEW</div></div>',
-                unsafe_allow_html=True)
-
-
 def page_overview():
     st.title("Portfolio Overview")
     fresh = live_ok["ingested_at"].max() if len(live_ok) else f"{history.snapshot_date.max():%Y-%m-%d} (history)"
@@ -333,6 +381,5 @@ def page_queue():
             st.warning(f"{len(live_bad)} malformed feed record(s) rejected.")
 
 
-brand_header()
-_ = {"Portfolio Overview": page_overview, "Customer View": page_customer,
+{"Portfolio Overview": page_overview, "Customer View": page_customer,
  "Model Comparison": page_models, "Review Queue": page_queue}[st.session_state.page]()
